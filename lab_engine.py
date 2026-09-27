@@ -49,7 +49,7 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
             browser.close()
             return {"success": False, "error": f"فشل في استخراج بيانات الحساب المؤقت من الصفحة: {str(e)}"}
 
-        # تصحيح: تسجيل الدخول إلى حساب Google السحابي الفعلي
+        # تصحيح: تسجيل الدخول إلى نظام حسابات Google الرسمي
         print("[*] Logging into temporary Google Cloud Account...")
         page.goto("https://google.com")
         page.fill('input[type="email"]', username)
@@ -59,12 +59,8 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
         page.fill('input[type="password"]', password)
         page.click('#passwordNext')
         
-        # الانتظار حتى اكتمال التوجيه الآمن لحساب جوجل
+        # الانتظار لتأكيد الهوية والتوجيه إلى الكونسول الرئيسي لجوجل كلاود
         page.wait_for_url("https://google.com**", timeout=60000)
-
-        # تصحيح: الانتقال إلى كونسول Google Cloud الفعلي لاستخراج الـ Token من الجلسة
-        print("[*] Navigating to Google Cloud Console...")
-        page.goto("https://google.com")
         page.wait_for_timeout(7000)
 
         # الموافقة على شروط الاستخدام المؤقتة تلقائياً إذا ظهرت البوب أب
@@ -76,17 +72,17 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
         except:
             pass
 
-        # توليد واستخراج رمز الوصول (OAuth Access Token) من كائن المتصفح السحابي الفعلي
+        # توليد واستخراج رمز الوصول (OAuth Access Token) الفعلي من كائن المتصفح السحابي لجوجل
         print("[*] Extracting OAuth Token...")
         try:
             token = page.evaluate("() => gapi.auth.getToken().access_token")
         except Exception as e:
             browser.close()
-            return {"success": False, "error": f"فشل استخراج رمز الوصول من الجلسة: {str(e)}"}
+            return {"success": False, "error": f"فشل استخراج رمز الوصول من الجلسة السحابية: {str(e)}"}
             
         browser.close()
 
-        # تصحيح: إعادة بناء رابط الـ API الرسمي والمباشر لـ Google Cloud Run
+        # تصحيح: بناء رابط الـ API الرسمي والمباشر لـ Google Cloud Run
         print("[*] Constructing Cloud Run Deployment Request...")
         deploy_url = f"https://googleapis.com{project_id}/locations/{region}/services?serviceId=mustapha35"
         
@@ -129,11 +125,11 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
         # تنفيذ عملية النشر مباشرة عبر السحابة
         response = requests.post(deploy_url, json=payload, headers=headers)
         
-        # تصحيح: التحقق من نجاح أكواد طلب الـ HTTP بشكل صحيح ومغلق
+        # تصحيح: التحقق من نجاح التوليد (الأكواد المقبولة من Google API هي 200 أو 201)
         if response.status_code in:
             res_data = response.json()
             
-            # السماح بالوصول العام (Allow public access) عن طريق ضبط الـ IAM للخدمة بشكل مستقل
+            # تصحيح: السماح بالوصول العام (Allow public access) عن طريق ضبط الـ IAM للخدمة بشكل رسمي ومستقل
             set_iam_url = f"https://googleapis.com{project_id}/locations/{region}/services/mustapha35:setIamPolicy"
             iam_payload = {
                 "policy": {
@@ -152,7 +148,7 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
             requests.post(set_iam_url, json=iam_payload, headers=headers)
             
             # استخراج أو بناء رابط الخدمة المتوقع بناءً على المنطقة والمشروع
-            generated_url = res_data.get("uri", f"https://mustapha35-{project_id}.run.app (جاري التحضير)")
+            generated_url = res_data.get("uri", f"https://mustapha35-{project_id}.run.app")
             return {"success": True, "url": generated_url, "project_id": project_id}
         else:
             return {"success": False, "error": f"GCP API Error {response.status_code}: {response.text}"}
