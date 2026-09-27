@@ -4,7 +4,10 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 from lab_engine import automate_lab_and_deploy
 
-# إعداد توكن البوت
+# إعداد التسجيل (Logging) لمتابعة حالة السيرفر على Railway
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# إعداد توكن البوت - يتم سحبه تلقائياً من إعدادات Railway الأمنية
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # تخزين مؤقت لحالات المستخدمين وجلسات العمل
@@ -53,6 +56,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data.startswith("region_"):
+        # تصحيح التقاط رمز المنطقة بدقة من الزر المكبوس
         selected_region = query.data.split("_")[1]
         user_sessions[user_id]["region"] = selected_region
         
@@ -60,34 +64,40 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await query.edit_message_text(f"⏳ **جاري بدء المعالجة الذكية...**\n"
                                       f"🔹 المنطقة المختارة: `{selected_region}`\n"
-                                      f"🔹 يتم الآن فتح صفحة المختبر وتوليد الحساب ونشر الخدمة بكافة الخصائص المطلوبة الفائقة تلقائياً. يرجى الانتظار...", parse_mode="Markdown")
+                                      f"🔹 يتم الآن فتح صفحة المختبر وتوليد الحساب ونشر الخدمة بكافة الخصائص المطلوبة تلقائياً. يرجى الانتظار...", parse_mode="Markdown")
         
-        # تنفيذ الأتمتة الكاملة خلف الكواليس
-        # ملاحظة: إذا كان المختبر يتطلب حساب Qwiklabs خاص بك لتسجيل الدخول مرره هنا، وإلا اتركها None إذا كانت الصفحة مفتوحة عامة
-        result = automate_lab_and_deploy(lab_url, selected_region, qwiklabs_email=None, qwiklabs_password=None)
-        
-        if result["success"]:
-            await query.message.reply_text(
-                f"✅ **تم إنشاء وتشغيل مشروعك بنجاح وبدون أي قيود!**\n\n"
-                f"⚙️ **تفاصيل النشر:**\n"
-                f"• اسم الخدمة: `mustapha35`\n"
-                f"• الحاوية: `winda2635/mustapha-vless-xhttp:latest`\n"
-                f"• المنافذ: `8080`\n"
-                f"• المعالج والذاكرة: `1 CPU | 1 GiB` (مخصصة دائماً)\n"
-                f"• جيل البيئة: `Second Generation`\n"
-                f"• النطاق الترددي (Autoscaling): `1 - 16 Instances`\n"
-                f"• الوصول: `Allow public access (All Ingress)`\n"
-                f"• معرف المشروع المؤقت: `{result['project_id']}`\n\n"
-                f"🔗 **رابط الـ Cloud Run المباشر:**\n{result['url']}",
-                parse_mode="Markdown"
-            )
-        else:
-            await query.message.reply_text(f"❌ حدث خطأ أثناء تنفيذ النشر التلقائي:\n`{result['error']}`", parse_mode="Markdown")
+        try:
+            # تنفيذ الأتمتة الكاملة خلف الكواليس عبر محرك الأتمتة الخاص بنا
+            result = automate_lab_and_deploy(lab_url, selected_region, qwiklabs_email=None, qwiklabs_password=None)
             
-        # تنظيف الجلسة
+            if result["success"]:
+                await query.message.reply_text(
+                    f"✅ **تم إنشاء وتشغيل مشروعك بنجاح وبدون أي قيود!**\n\n"
+                    f"⚙️ **تفاصيل النشر المستهدفة:**\n"
+                    f"• اسم الخدمة: `mustapha35`\n"
+                    f"• الحاوية: `winda2635/mustapha-vless-xhttp:latest`\n"
+                    f"• المنافذ: `8080`\n"
+                    f"• المعالج والذاكرة: `1 CPU | 1 GiB` (مخصصة دائماً)\n"
+                    f"• جيل البيئة: `Second Generation`\n"
+                    f"• النطاق الترددي (Autoscaling): `1 - 16 Instances`\n"
+                    f"• الوصول: `Allow public access (All Ingress)`\n"
+                    f"• معرف المشروع المؤقت: `{result['project_id']}`\n\n"
+                    f"🔗 **رابط الـ Cloud Run المباشر:**\n{result['url']}",
+                    parse_mode="Markdown"
+                )
+            else:
+                await query.message.reply_text(f"❌ حدث خطأ أثناء تنفيذ النشر التلقائي:\n`{result['error']}`", parse_mode="Markdown")
+        
+        except Exception as e:
+            await query.message.reply_text(f"❌ خطأ غير متوقع في محرك المعالجة:\n`{str(e)}`", parse_mode="Markdown")
+            
+        # تنظيف الجلسة لضمان عدم تداخل الطلبات المستقبلية
         user_sessions.pop(user_id, None)
 
 def main():
+    if not TELEGRAM_TOKEN:
+        raise ValueError("خطأ: لم يتم العثور على متغير البيئة TELEGRAM_TOKEN في إعدادات السيرفر.")
+        
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
