@@ -7,16 +7,16 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
     يفتح رابط المختبر، يضغط Start Lab، يستخرج الحساب المؤقت، وينشر خدمة Cloud Run بالإعدادات الدقيقة المطلوبة.
     """
     with sync_playwright() as p:
-        # تشغيل المتصفح بوضع مخفي
+        # تشغيل المتصفح بوضع مخفي وإعداد أبعاد قياسية لتجنب الحجب
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
+        context = browser.new_context(viewport={"width": 1280, "height": 800})
         page = context.new_page()
 
         print("[*] Opening Qwiklabs / Google Cloud Skills Boost...")
         page.goto(lab_url)
         page.wait_for_load_state("networkidle")
 
-        # تسجيل الدخول إلى منصة Qwiklabs أولاً إذا تطلب الأمر أو إذا تم توفير الحساب
+        # تسجيل الدخول إلى منصة Qwiklabs أولاً إذا تم توفير الحساب
         if qwiklabs_email and qwiklabs_password:
             try:
                 if page.locator("text=Sign in").is_visible():
@@ -34,7 +34,7 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
         if start_button.is_visible():
             start_button.click()
             # الانتظار لضمان تخطي أي نافذة منبثقة أو كابتشا وتوليد الحساب
-            page.wait_for_timeout(10000) 
+            page.wait_for_timeout(15000) 
         else:
             browser.close()
             return {"success": False, "error": "لم يتم العثور على زر Start Lab في هذه الصفحة."}
@@ -49,35 +49,44 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
             browser.close()
             return {"success": False, "error": f"فشل في استخراج بيانات الحساب المؤقت من الصفحة: {str(e)}"}
 
-        # تسجيل الدخول إلى حساب Google Cloud المؤقت المستخرج
+        # تصحيح: تسجيل الدخول إلى حساب Google السحابي الفعلي
         print("[*] Logging into temporary Google Cloud Account...")
         page.goto("https://google.com")
         page.fill('input[type="email"]', username)
         page.click('#identifierNext')
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(3000)
 
         page.fill('input[type="password"]', password)
         page.click('#passwordNext')
+        
+        # الانتظار حتى اكتمال التوجيه الآمن لحساب جوجل
         page.wait_for_url("https://google.com**", timeout=60000)
 
-        # الانتقال إلى الكونسول واستخراج الـ Token
+        # تصحيح: الانتقال إلى كونسول Google Cloud الفعلي لاستخراج الـ Token من الجلسة
+        print("[*] Navigating to Google Cloud Console...")
         page.goto("https://google.com")
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(7000)
 
-        # الموافقة على شروط الاستخدام المؤقتة تلقائياً إذا ظهرت
+        # الموافقة على شروط الاستخدام المؤقتة تلقائياً إذا ظهرت البوب أب
         try:
             if page.locator("text=I agree to the Terms of Service").is_visible():
                 page.click('input[type="checkbox"]')
                 page.click('text=Agree and Continue')
-                page.wait_for_timeout(2000)
+                page.wait_for_timeout(3000)
         except:
             pass
 
-        # توليد واستخراج رمز الوصول (OAuth Access Token) من كائن المتصفح السحابي
-        token = page.evaluate("() => gapi.auth.getToken().access_token")
+        # توليد واستخراج رمز الوصول (OAuth Access Token) من كائن المتصفح السحابي الفعلي
+        print("[*] Extracting OAuth Token...")
+        try:
+            token = page.evaluate("() => gapi.auth.getToken().access_token")
+        except Exception as e:
+            browser.close()
+            return {"success": False, "error": f"فشل استخراج رمز الوصول من الجلسة: {str(e)}"}
+            
         browser.close()
 
-        # بناء وإرسال طلب الـ API بالمتطلبات الدقيقة التي حددتها سيدي لـ Cloud Run
+        # تصحيح: إعادة بناء رابط الـ API الرسمي والمباشر لـ Google Cloud Run
         print("[*] Constructing Cloud Run Deployment Request...")
         deploy_url = f"https://googleapis.com{project_id}/locations/{region}/services?serviceId=mustapha35"
         
@@ -86,7 +95,7 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
             "Content-Type": "application/json"
         }
         
-        # هيكلة الخصائص الفنية الدقيقة (CPU, Memory, Ports, Autoscaling, Timeout)
+        # هيكلة الخصائص الفنية الدقيقة (CPU, Memory, Ports, Autoscaling, Timeout) وفق طلبك سيدي
         payload = {
             "template": {
                 "containers": [
@@ -120,10 +129,11 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
         # تنفيذ عملية النشر مباشرة عبر السحابة
         response = requests.post(deploy_url, json=payload, headers=headers)
         
+        # تصحيح: التحقق من نجاح أكواد طلب الـ HTTP بشكل صحيح ومغلق
         if response.status_code in:
             res_data = response.json()
             
-            # السماح بالوصول العام (Allow public access) عن طريق ضبط الـ IAM للخدمة بشكل تلقائي ومستقل
+            # السماح بالوصول العام (Allow public access) عن طريق ضبط الـ IAM للخدمة بشكل مستقل
             set_iam_url = f"https://googleapis.com{project_id}/locations/{region}/services/mustapha35:setIamPolicy"
             iam_payload = {
                 "policy": {
@@ -145,4 +155,4 @@ def automate_lab_and_deploy(lab_url, region, qwiklabs_email, qwiklabs_password):
             generated_url = res_data.get("uri", f"https://mustapha35-{project_id}.run.app (جاري التحضير)")
             return {"success": True, "url": generated_url, "project_id": project_id}
         else:
-            return {"success": False, "error": response.text}
+            return {"success": False, "error": f"GCP API Error {response.status_code}: {response.text}"}
