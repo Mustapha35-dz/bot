@@ -1,7 +1,7 @@
-# استخدام نسخة بايثون 3.11 الرسمية والمستقرة والمبنية على نظام دبيان
+# استخدام نسخة بايثون 3.11 الرسمية والمستقرة
 FROM python:3.11-slim
 
-# تثبيت الاعتماديات الرسومية والأدوات الأساسية التي يحتاجها متصفح Playwright للعمل في وضع headless
+# تحديث النظام وتثبيت الاعتماديات الرسومية الصحيحة والخالية من الأخطاء الإملائية
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     gnupg \
@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcomposite1 \
     libxdamage1 \
     libxext6 \
-    libxfix6 \
-    librandr2 \
+    libxfixes3 \
+    libxrandr2 \
     libgbm1 \
     libpango-1.0-0 \
     libcairo2 \
@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # إعداد مجلد العمل داخل السيرفر
 WORKDIR /app
 
-# نسخ ملف الاعتماديات أولاً لتسريع عملية البناء عبر الـ Cache
+# نسخ ملف الاعتماديات لتسريع عملية البناء عبر الـ Cache
 COPY requirements.txt .
 
 # تحديث أداة التثبيت وتثبيت الحزم البرمجية المستقرة بنجاح
